@@ -137,3 +137,38 @@ async def test_unknown_tool_yields_error():
     assert any(isinstance(e, ErrorEvent) for e in events)
     error = next(e for e in events if isinstance(e, ErrorEvent))
     assert "nonexistent" in error.message
+
+
+from pyeve.testing import run_tool, AgentTestClient, ChatResponse
+
+
+async def test_run_tool_calls_execute():
+    from tests.fixtures.weather.agent.tools.get_weather import execute
+    result = await run_tool(execute, city="Tokyo")
+    assert result["city"] == "Tokyo"
+    assert result["condition"] == "Sunny"
+
+
+async def test_agent_test_client_chat(weather_agent_dir):
+    adapter = MockAdapter(responses=["Tokyo is sunny today."])
+    client = AgentTestClient(agent_dir=str(weather_agent_dir), adapter=adapter)
+    response = await client.chat("Weather in Tokyo?")
+
+    assert isinstance(response, ChatResponse)
+    assert "sunny" in response.text.lower()
+    assert len(response.events) > 0
+
+
+async def test_agent_test_client_session_persists(tmp_path, weather_agent_dir):
+    adapter = MockAdapter(responses=["Hello!", "Goodbye!"])
+    client = AgentTestClient(
+        agent_dir=str(weather_agent_dir),
+        adapter=adapter,
+        sessions_dir=tmp_path,
+    )
+
+    r1 = await client.chat("Hello", session_id="persist-test")
+    r2 = await client.chat("Bye", session_id="persist-test")
+
+    assert r1.text == "Hello!"
+    assert r2.text == "Goodbye!"
