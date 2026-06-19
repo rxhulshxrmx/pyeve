@@ -5,7 +5,7 @@ pyeve — filesystem-first framework for durable backend AI agents in Python.
 from pyeve.asgi import agent
 from pyeve.types import AgentConfig
 
-__version__ = "0.1.0"
+__version__ = "0.1.1"
 __all__ = ["agent", "define_agent", "AgentConfig"]
 
 
