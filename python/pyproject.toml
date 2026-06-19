@@ -1,0 +1,33 @@
+[project]
+name = "pyeve"
+version = "0.0.1"
+description = "Filesystem-first framework for durable backend AI agents in Python"
+readme = "README.md"
+license = { text = "Apache-2.0" }
+requires-python = ">=3.11"
+keywords = ["ai", "agents", "llm", "framework", "durable"]
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Libraries :: Application Frameworks",
+]
+
+[project.urls]
+Homepage = "https://github.com/vercel/eve"
+Documentation = "https://beta.eve.dev/docs"
+Repository = "https://github.com/vercel/eve"
+
+[project.scripts]
+pyeve = "pyeve.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/pyeve"]
