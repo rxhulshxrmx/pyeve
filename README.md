@@ -24,7 +24,7 @@ my-agent/
 ## Quick start
 
 ```bash
-pip install pyeve
+pip install "pyeve[anthropic]"   # or [openai], [mistral], [sap]
 pyeve init my-agent
 cd my-agent
 pyeve dev
