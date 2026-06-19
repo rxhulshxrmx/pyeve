@@ -58,7 +58,11 @@ async def _handle_chat(scope, receive, send, agent_dir: Path, store: DiskSession
         await _send_response(send, 400, b"Invalid JSON", "text/plain")
         return
 
-    user_message: str = data.get("message", "")
+    if not isinstance(data, dict):
+        await _send_response(send, 400, b"Request body must be a JSON object", "text/plain")
+        return
+
+    user_message: str = str(data.get("message", ""))
     raw_session_id = data.get("session_id")
     if raw_session_id is not None and not _validate_session_id(str(raw_session_id)):
         await _send_response(send, 400, b"Invalid session_id", "text/plain")

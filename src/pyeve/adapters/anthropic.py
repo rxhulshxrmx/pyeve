@@ -30,11 +30,15 @@ class AnthropicAdapter:
         anthropic_messages = _to_anthropic_messages(messages)
         anthropic_tools = [_to_anthropic_tool(t) for t in tools]
 
+        system_content = "\n\n".join(m.content for m in messages if m.role == "system")
+
         kwargs: dict = {
             "model": config.model,
             "max_tokens": config.max_tokens,
             "messages": anthropic_messages,
         }
+        if system_content:
+            kwargs["system"] = system_content
         if anthropic_tools:
             kwargs["tools"] = anthropic_tools
         if config.temperature is not None:

@@ -61,7 +61,11 @@ async def run_agent_loop(
                 return
 
             _, execute_fn = tools[call.name]
-            result = await execute_fn(**call.input)
+            try:
+                result = await execute_fn(**call.input)
+            except Exception as e:
+                yield ErrorEvent(message=f"Tool '{call.name}' raised an error: {e}")
+                return
 
             yield ToolResultEvent(id=call.id, result=result)
 

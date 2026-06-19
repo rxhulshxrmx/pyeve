@@ -25,7 +25,6 @@ anthropic = ["anthropic>=0.40"]
 openai = ["openai>=1.0"]
 sap = ["generative-ai-hub-sdk>=4.0"]
 mistral = ["mistralai>=1.0"]
-litellm = ["litellm>=1.0"]
 dev = [
     "pytest>=8.0",
     "pytest-asyncio>=0.24",

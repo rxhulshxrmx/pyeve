@@ -110,7 +110,6 @@ uvicorn.run(agent("./agent"), port=8000)
 | OpenAI | `pip install "pyeve[openai]"` | `OpenAIAdapter()` |
 | Mistral | `pip install "pyeve[mistral]"` | `MistralAdapter()` |
 | SAP AI Core | `pip install "pyeve[sap]"` | `SAPAICoreAdapter()` |
-| LiteLLM | `pip install "pyeve[litellm]"` | `LiteLLMAdapter()` |
 
 ## Durable sessions
 
