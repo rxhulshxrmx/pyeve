@@ -24,6 +24,7 @@ dependencies = [
 anthropic = ["anthropic>=0.40"]
 openai = ["openai>=1.0"]
 sap = ["generative-ai-hub-sdk>=4.0"]
+mistral = ["mistralai>=1.0"]
 litellm = ["litellm>=1.0"]
 dev = [
     "pytest>=8.0",
@@ -36,9 +37,8 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/vercel/eve"
-Documentation = "https://beta.eve.dev/docs"
-Repository = "https://github.com/vercel/eve"
+Homepage = "https://github.com/rxhulshxrmx/pyeve"
+Repository = "https://github.com/rxhulshxrmx/pyeve"
 
 [project.scripts]
 pyeve = "pyeve.cli:main"

@@ -23,3 +23,8 @@ def test_openai_adapter_satisfies_protocol():
 def test_sap_adapter_importable():
     from pyeve.adapters.sap import SAPAICoreAdapter
     assert SAPAICoreAdapter is not None
+
+
+def test_mistral_adapter_importable():
+    from pyeve.adapters.mistral import MistralAdapter
+    assert MistralAdapter is not None
