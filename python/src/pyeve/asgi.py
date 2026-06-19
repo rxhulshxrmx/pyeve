@@ -1,9 +1,16 @@
 from __future__ import annotations
 
 import json
+import re
 import uuid
 from pathlib import Path
 from typing import Callable
+
+_SESSION_ID_RE = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
+
+
+def _validate_session_id(session_id: str) -> bool:
+    return bool(_SESSION_ID_RE.fullmatch(session_id))
 
 from pyeve.discover import discover_agent_config, discover_instructions, discover_tools
 from pyeve.loop import run_agent_loop
@@ -27,9 +34,15 @@ def agent(agent_dir: str = "./agent", sessions_dir: Path | None = None) -> Calla
             await _handle_chat(scope, receive, send, dir_path, store)
         elif method == "GET" and path.startswith("/sessions/"):
             session_id = path.removeprefix("/sessions/").strip("/")
+            if not _validate_session_id(session_id):
+                await _send_response(send, 400, b"Invalid session_id", "text/plain")
+                return
             await _handle_get_session(send, session_id, store)
         elif method == "DELETE" and path.startswith("/sessions/"):
             session_id = path.removeprefix("/sessions/").strip("/")
+            if not _validate_session_id(session_id):
+                await _send_response(send, 400, b"Invalid session_id", "text/plain")
+                return
             await _handle_delete_session(send, session_id, store)
         else:
             await _send_response(send, 404, b"Not found", "text/plain")
@@ -46,7 +59,11 @@ async def _handle_chat(scope, receive, send, agent_dir: Path, store: DiskSession
         return
 
     user_message: str = data.get("message", "")
-    session_id: str = data.get("session_id") or str(uuid.uuid4())
+    raw_session_id = data.get("session_id")
+    if raw_session_id is not None and not _validate_session_id(str(raw_session_id)):
+        await _send_response(send, 400, b"Invalid session_id", "text/plain")
+        return
+    session_id: str = raw_session_id or str(uuid.uuid4())
 
     if not user_message:
         await _send_response(send, 400, b"message is required", "text/plain")
@@ -105,10 +122,7 @@ async def _handle_get_session(send, session_id: str, store: DiskSessionStore) ->
 
 
 async def _handle_delete_session(send, session_id: str, store: DiskSessionStore) -> None:
-    import shutil
-    session_path = store._base / session_id
-    if session_path.exists():
-        shutil.rmtree(session_path)
+    await store.delete(session_id)
     await _send_response(send, 204, b"", "text/plain")
 
 

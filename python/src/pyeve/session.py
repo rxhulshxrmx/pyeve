@@ -23,6 +23,12 @@ class DiskSessionStore:
     def __init__(self, base_dir: Path | None = None) -> None:
         self._base = base_dir or Path(".pyeve/sessions")
 
+    async def delete(self, session_id: str) -> None:
+        import shutil
+        session_path = self._base / session_id
+        if session_path.exists():
+            shutil.rmtree(session_path)
+
     async def load(self, session_id: str) -> Session | None:
         path = self._base / session_id / "session.json"
         if not path.exists():
