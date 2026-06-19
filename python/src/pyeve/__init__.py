@@ -1,11 +1,20 @@
 """
 pyeve — filesystem-first framework for durable backend AI agents in Python.
-
-Drop an agent/ directory, run `pyeve dev`. That's it.
-
-    pip install pyeve
-
-Coming soon. See https://beta.eve.dev for the TypeScript version.
 """
 
+from pyeve.asgi import agent
+from pyeve.types import AgentConfig
+
 __version__ = "0.0.1"
+__all__ = ["agent", "define_agent", "AgentConfig"]
+
+
+def define_agent(
+    *,
+    model: str,
+    adapter,
+    max_tokens: int = 4096,
+    temperature: float | None = None,
+) -> AgentConfig:
+    """Configure the agent model and runtime options."""
+    return AgentConfig(model=model, adapter=adapter, max_tokens=max_tokens, temperature=temperature)
