@@ -64,16 +64,16 @@ class MistralAdapter:
                             full_text += delta.content
                             yield TokenEvent(text=delta.content)
                         if delta.tool_calls:
-                            for idx, tc in enumerate(delta.tool_calls):
-                                real_idx = getattr(tc, "index", idx)
-                                if real_idx not in tool_calls_accumulator:
-                                    tool_calls_accumulator[real_idx] = {
+                            for tc in delta.tool_calls:
+                                idx = tc.index
+                                if idx not in tool_calls_accumulator:
+                                    tool_calls_accumulator[idx] = {
                                         "id": tc.id or "",
                                         "name": tc.function.name or "" if tc.function else "",
                                         "arguments": "",
                                     }
                                 if tc.function and tc.function.arguments:
-                                    tool_calls_accumulator[real_idx]["arguments"] += tc.function.arguments
+                                    tool_calls_accumulator[idx]["arguments"] += tc.function.arguments
 
                 for tc in tool_calls_accumulator.values():
                     yield ToolCallEvent(
