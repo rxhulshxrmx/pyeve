@@ -108,6 +108,7 @@ uvicorn.run(agent("./agent"), port=8000)
 |---|---|---|
 | Anthropic | `pip install "pyeve[anthropic]"` | `AnthropicAdapter()` |
 | OpenAI | `pip install "pyeve[openai]"` | `OpenAIAdapter()` |
+| Mistral | `pip install "pyeve[mistral]"` | `MistralAdapter()` |
 | SAP AI Core | `pip install "pyeve[sap]"` | `SAPAICoreAdapter()` |
 | LiteLLM | `pip install "pyeve[litellm]"` | `LiteLLMAdapter()` |
 
