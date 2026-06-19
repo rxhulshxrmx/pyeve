@@ -1,117 +1,148 @@
-<a href="https://vercel.com"><img alt="Vercel logo" src="https://img.shields.io/badge/MADE%20BY%20Vercel-000000.svg?style=for-the-badge&logo=Vercel&labelColor=000"></a>
-<a href="https://www.npmjs.com/package/eve"><img alt="NPM version" src="https://img.shields.io/npm/v/eve.svg?style=for-the-badge&labelColor=000000"></a>
-<a href="https://github.com/vercel/eve/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/npm/l/eve.svg?style=for-the-badge&labelColor=000000"></a>
-<a href="https://github.com/vercel/eve/discussions"><img alt="Join the community on GitHub" src="https://img.shields.io/badge/Join%20the%20community-blueviolet.svg?style=for-the-badge&logo=Github&labelColor=000000&logoWidth=20"></a>
-
+<div align="center">
+  <a href="https://pypi.org/project/pyeve"><img alt="PyPI version" src="https://img.shields.io/pypi/v/pyeve.svg?style=for-the-badge&labelColor=000000"></a>
+  <a href="https://github.com/rxhulshxrmx/pyeve/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/pypi/l/pyeve.svg?style=for-the-badge&labelColor=000000"></a>
+  <a href="https://www.python.org/downloads/"><img alt="Python 3.11+" src="https://img.shields.io/badge/python-3.11+-blue.svg?style=for-the-badge&labelColor=000000"></a>
 </div>
 
-eve is a filesystem-first framework for durable AI agents. Core agent capabilities live in
-conventional locations, so projects are easier to inspect, extend, and operate.
+<br/>
+
+**pyeve** is a filesystem-first framework for durable backend AI agents in Python. Core agent capabilities live in conventional locations, so projects are easier to inspect, extend, and operate.
 
 ## The filesystem is the authoring interface
 
-A typical eve agent has this structure:
+A typical pyeve agent has this structure:
 
 ```text
 my-agent/
 └── agent/
-    ├── agent.ts            # Optional: model and runtime config
-    ├── instructions.md     # Required: the always-on system prompt
-    ├── tools/              # Optional: typed functions the model can call
-    │   └── get_weather.ts
-    ├── skills/             # Optional: procedures loaded on demand
-    │   └── plan_a_trip.md
-    ├── channels/           # Optional: message channels (HTTP, Slack, Discord)
-    │   └── slack.ts
-    └── schedules/          # Optional: recurring cron jobs
-        └── weekly_recap.ts
+    ├── agent.py            # model and runtime config
+    ├── instructions.md     # always-on system prompt
+    └── tools/              # functions the model can call
+        └── get_weather.py
 ```
-
-Read the [documentation](https://beta.eve.dev/docs) for the full project layout and guides.
 
 ## Quick start
 
 ```bash
-npx eve@latest init my-agent
+pip install pyeve
+pyeve init my-agent
+cd my-agent
+pyeve dev
 ```
 
-This creates a new `my-agent` directory, installs its dependencies, initializes Git, and starts
-the interactive terminal UI.
+Your agent is running at `http://localhost:8000`.
 
-To add eve to an existing project, pass a path:
+## A minimal example
 
-```bash
-cd myapp
-npx eve@latest init .
-```
-
-> [!NOTE]
-> The `eve` package includes its full documentation, so coding agents can read it locally from
-> `node_modules/eve/docs`.
-
-### A minimal example
-
-The generated project includes an `agent` directory. Replace `agent/instructions.md` with:
+Replace `agent/instructions.md` with:
 
 ```md
-You are a concise weather demo assistant. Tell users that the weather data is mocked.
+You are a concise weather assistant. Tell users that the weather data is mocked.
 ```
 
-Add a mock weather tool at `agent/tools/get_weather.ts`:
+Add a tool at `agent/tools/get_weather.py`:
 
-```ts
-import { defineTool } from "eve/tools";
-import { z } from "zod";
-
-export default defineTool({
-  description: "Return mock weather data for a city.",
-  inputSchema: z.object({ city: z.string().min(1) }),
-  async execute({ city }) {
-    return { city, condition: "Sunny", temperatureF: 72 };
-  },
-});
+```python
+async def execute(city: str) -> dict:
+    """Return current weather for a city."""
+    return {"city": city, "condition": "Sunny", "temp_f": 72}
 ```
 
-Choose the model in `agent/agent.ts`:
+Configure the model in `agent/agent.py`:
 
-```ts
-import { defineAgent } from "eve";
+```python
+from pyeve import define_agent
+from pyeve.adapters.anthropic import AnthropicAdapter
 
-export default defineAgent({
-  model: "anthropic/claude-sonnet-4.6",
-});
+agent = define_agent(
+    model="claude-sonnet-4-6",
+    adapter=AnthropicAdapter(),
+)
 ```
 
-For a new scaffold, start the agent again:
+Send a message:
 
 ```bash
-npm run dev
+curl -X POST http://localhost:8000/chat \
+  -H "Content-Type: application/json" \
+  -d '{"message": "What is the weather in Berlin?"}'
 ```
 
-That's a working agent. Add human-in-the-loop prompts, subagents, and schedules as needed.
-Follow the [first-agent tutorial](https://beta.eve.dev/docs/tutorial/first-agent) for a complete
-walkthrough.
+Response streams as [Server-Sent Events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events).
 
-## Community
+## Tools are plain async functions
 
-The eve community lives on [GitHub Discussions](https://github.com/vercel/eve/discussions),
-where you can ask questions, share ideas, and show what you've built.
+No decorators, no schema classes. pyeve reads the docstring as the description and infers the JSON schema from type hints.
 
-## Contributing
+```python
+# agent/tools/search.py
+async def execute(query: str, limit: int = 5) -> list[dict]:
+    """Search the knowledge base and return matching documents."""
+    ...
+```
 
-Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) to get the repo
-running locally and land a change, and use
-[issues](https://github.com/vercel/eve/issues) and
-[discussions](https://github.com/vercel/eve/discussions) to collaborate. By
-participating, you agree to our [Code of Conduct](CODE_OF_CONDUCT.md).
+## Works with any Python framework
 
-## Security
+`agent()` returns a standard ASGI callable — mount it anywhere:
 
-Please do not open public issues for security vulnerabilities. Instead, follow
-[SECURITY.md](SECURITY.md) and report responsibly to
-[responsible.disclosure@vercel.com](mailto:responsible.disclosure@vercel.com).
+```python
+# FastAPI
+from fastapi import FastAPI
+from pyeve import agent
 
-## Beta terms
+app = FastAPI()
+app.mount("/", agent("./agent"))
+```
 
-eve is currently in beta and subject to the [Vercel beta terms](https://vercel.com/docs/release-phases/public-beta-agreement);
-the framework, APIs, documentation, and behavior may change before general availability.
+```python
+# Standalone with uvicorn
+import uvicorn
+from pyeve import agent
+
+uvicorn.run(agent("./agent"), port=8000)
+```
+
+## Provider adapters
+
+| Provider | Install | Adapter |
+|---|---|---|
+| Anthropic | `pip install "pyeve[anthropic]"` | `AnthropicAdapter()` |
+| OpenAI | `pip install "pyeve[openai]"` | `OpenAIAdapter()` |
+| SAP AI Core | `pip install "pyeve[sap]"` | `SAPAICoreAdapter()` |
+| LiteLLM | `pip install "pyeve[litellm]"` | `LiteLLMAdapter()` |
+
+## Durable sessions
+
+Sessions are persisted to disk automatically. Pick up a conversation by passing `session_id`:
+
+```bash
+curl -X POST http://localhost:8000/chat \
+  -d '{"message": "Follow up question", "session_id": "user-123"}'
+```
+
+Retrieve history:
+
+```bash
+curl http://localhost:8000/sessions/user-123
+```
+
+## Testing
+
+pyeve ships a `MockAdapter` and test client for unit testing agents without real API calls:
+
+```python
+from pyeve.adapters.mock import MockAdapter
+from pyeve.testing import AgentTestClient
+
+async def test_weather_agent():
+    client = AgentTestClient(
+        agent_dir="./agent",
+        adapter=MockAdapter(responses=["The weather in Berlin is sunny and 72°F."]),
+    )
+    response = await client.chat("What is the weather in Berlin?")
+    assert "Berlin" in response.text
+```
+
+## License
+
+Apache 2.0
