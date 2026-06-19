@@ -33,27 +33,33 @@ my-agent/
 
 ### Tool files
 
-A tool file needs no pyeve imports — convention is the interface:
+A tool file is a plain async function — no pyeve imports, no schema class:
 
 ```python
 # agent/tools/get_weather.py
-from pydantic import BaseModel
+async def execute(city: str) -> dict:
+    """Return current weather for a city."""
+    return {"city": city, "condition": "Sunny", "temp_f": 72}
+```
 
-description = "Return current weather for a city."
+pyeve introspects the function signature to auto-generate the JSON schema (via Pydantic under the hood). The docstring becomes the tool description passed to the model.
 
-class InputSchema(BaseModel):
-    city: str
+For complex input types, standard Python type hints work as expected:
 
-async def execute(input: InputSchema) -> dict:
-    return {"city": input.city, "condition": "Sunny", "temp_f": 72}
+```python
+from typing import Literal
+
+async def execute(city: str, units: Literal["celsius", "fahrenheit"] = "fahrenheit") -> dict:
+    """Return current weather for a city."""
+    ...
 ```
 
 **Invariants:**
 - Tool name = filename stem (`get_weather.py` → tool named `get_weather`)
-- `description` = module-level string, passed to the model so it knows when to call the tool
-- `InputSchema` must be a Pydantic `BaseModel`
+- Docstring = tool description (required — pyeve raises at startup if missing)
 - `execute()` must be `async`
-- No `name` field — name is derived from the file path
+- Parameters must have type hints — pyeve raises at startup if any are missing
+- No `name` field, no `InputSchema` class, no pyeve imports needed
 
 ### agent.py
 
