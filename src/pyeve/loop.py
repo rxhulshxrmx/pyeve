@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from typing import AsyncIterator, Callable
 
 from pyeve.session import Session
@@ -49,7 +50,14 @@ async def run_agent_loop(
                 yield event
                 return
 
-        session.history.append(Message(role="assistant", content=full_text))
+        session.history.append(Message(
+            role="assistant",
+            content=full_text,
+            tool_calls=[
+                {"id": tc.id, "name": tc.name, "arguments": json.dumps(tc.input)}
+                for tc in tool_calls
+            ] if tool_calls else None,
+        ))
 
         if not tool_calls:
             yield DoneEvent(text=full_text)

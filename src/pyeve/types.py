@@ -10,6 +10,9 @@ class Message:
     content: str
     tool_call_id: str | None = None
     tool_name: str | None = None
+    # Set on assistant messages when the turn produced tool calls.
+    # Each dict: {"id": str, "name": str, "arguments": str (JSON)}
+    tool_calls: list[dict] | None = None
 
 
 @dataclass

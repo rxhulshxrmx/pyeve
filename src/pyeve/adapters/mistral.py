@@ -11,6 +11,33 @@ from pyeve.types import (
 _UNSET_TYPE_NAME = "Unset"
 
 
+def _to_mistral_messages(messages: list[Message]) -> list[dict]:
+    result: list[dict] = []
+    for m in messages:
+        if m.role in ("user", "system"):
+            result.append({"role": m.role, "content": m.content})
+        elif m.role == "assistant":
+            msg: dict = {"role": "assistant", "content": m.content or ""}
+            if m.tool_calls:
+                msg["tool_calls"] = [
+                    {
+                        "id": tc["id"],
+                        "type": "function",
+                        "function": {"name": tc["name"], "arguments": tc["arguments"]},
+                    }
+                    for tc in m.tool_calls
+                ]
+            result.append(msg)
+        elif m.role == "tool":
+            result.append({
+                "role": "tool",
+                "content": m.content,
+                "tool_call_id": m.tool_call_id,
+                "name": m.tool_name,
+            })
+    return result
+
+
 class MistralAdapter:
     """Adapter for the Mistral SDK (pip install pyeve[mistral])."""
 
@@ -30,25 +57,22 @@ class MistralAdapter:
         tools: list[ToolDefinition],
         config: AgentConfig,
     ) -> AsyncIterator[StreamEvent]:
-        mistral_messages = [{"role": m.role, "content": m.content} for m in messages]
-        mistral_tools = [
-            {
-                "type": "function",
-                "function": {
-                    "name": t.name,
-                    "description": t.description,
-                    "parameters": t.input_schema,
-                },
-            }
-            for t in tools
-        ]
-
         kwargs: dict = {
             "model": config.model,
-            "messages": mistral_messages,
+            "messages": _to_mistral_messages(messages),
         }
-        if mistral_tools:
-            kwargs["tools"] = mistral_tools
+        if tools:
+            kwargs["tools"] = [
+                {
+                    "type": "function",
+                    "function": {
+                        "name": t.name,
+                        "description": t.description,
+                        "parameters": t.input_schema,
+                    },
+                }
+                for t in tools
+            ]
         if config.temperature is not None:
             kwargs["temperature"] = config.temperature
 
@@ -59,8 +83,7 @@ class MistralAdapter:
                 full_text = ""
                 tool_calls_accumulator: dict[int, dict] = {}
 
-                # stream_async is a coroutine that returns an AsyncGenerator —
-                # await it to get the generator, then iterate directly.
+                # stream_async is a coroutine returning an AsyncGenerator — await it.
                 stream = await client.chat.stream_async(**kwargs)
                 async for chunk in stream:
                     delta = chunk.data.choices[0].delta if chunk.data.choices else None
@@ -80,14 +103,13 @@ class MistralAdapter:
 
                     for tc in tc_list:
                         idx = getattr(tc, "index", 0)
+                        fn = getattr(tc, "function", None)
                         if idx not in tool_calls_accumulator:
-                            fn = getattr(tc, "function", None)
                             tool_calls_accumulator[idx] = {
                                 "id": getattr(tc, "id", "") or "",
                                 "name": (fn.name or "") if fn else "",
                                 "arguments": "",
                             }
-                        fn = getattr(tc, "function", None)
                         if fn and fn.arguments:
                             tool_calls_accumulator[idx]["arguments"] += fn.arguments
 

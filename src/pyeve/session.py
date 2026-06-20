@@ -42,6 +42,7 @@ class DiskSessionStore:
                     content=m["content"],
                     tool_call_id=m.get("tool_call_id"),
                     tool_name=m.get("tool_name"),
+                    tool_calls=m.get("tool_calls"),
                 )
                 for m in data["history"]
             ],
@@ -59,6 +60,7 @@ class DiskSessionStore:
                     "content": m.content,
                     "tool_call_id": m.tool_call_id,
                     "tool_name": m.tool_name,
+                    "tool_calls": m.tool_calls,
                 }
                 for m in session.history
             ],
