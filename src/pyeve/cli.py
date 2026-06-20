@@ -63,9 +63,16 @@ def _cmd_init(name: str) -> None:
     print(f"\nRun: cd {name} && pyeve dev")
 
 
+def _run_dev_server(agent_path: str, host: str, port: int) -> None:
+    from pyeve import agent
+    import uvicorn
+    app = agent(agent_path)
+    uvicorn.run(app, host=host, port=port, log_level="info")
+
+
 def _cmd_dev(agent_dir: str, host: str, port: int) -> None:
     try:
-        import uvicorn
+        import uvicorn  # noqa: F401
         from watchfiles import run_process
     except ImportError:
         print(
@@ -78,13 +85,7 @@ def _cmd_dev(agent_dir: str, host: str, port: int) -> None:
     print(f"Starting pyeve dev server on http://{host}:{port}")
     print(f"Watching {agent_path} for changes...")
 
-    def _start():
-        from pyeve import agent
-        import uvicorn
-        app = agent(str(agent_path))
-        uvicorn.run(app, host=host, port=port, log_level="info")
-
-    run_process(str(agent_path), target=_start)
+    run_process(str(agent_path), target=_run_dev_server, args=(str(agent_path), host, port))
 
 
 if __name__ == "__main__":

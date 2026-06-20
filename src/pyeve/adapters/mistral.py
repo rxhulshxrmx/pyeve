@@ -8,6 +8,8 @@ from pyeve.types import (
     ToolCallEvent, ToolDefinition, TokenEvent,
 )
 
+_UNSET_TYPE_NAME = "Unset"
+
 
 class MistralAdapter:
     """Adapter for the Mistral SDK (pip install pyeve[mistral])."""
@@ -50,30 +52,44 @@ class MistralAdapter:
         if config.temperature is not None:
             kwargs["temperature"] = config.temperature
 
+        client = self._client
+
         async def _stream() -> AsyncIterator[StreamEvent]:
             try:
                 full_text = ""
                 tool_calls_accumulator: dict[int, dict] = {}
 
-                async with self._client.chat.stream_async(**kwargs) as stream:
-                    async for chunk in stream:
-                        delta = chunk.data.choices[0].delta if chunk.data.choices else None
-                        if delta is None:
-                            continue
-                        if delta.content:
-                            full_text += delta.content
-                            yield TokenEvent(text=delta.content)
-                        if delta.tool_calls:
-                            for tc in delta.tool_calls:
-                                idx = tc.index
-                                if idx not in tool_calls_accumulator:
-                                    tool_calls_accumulator[idx] = {
-                                        "id": tc.id or "",
-                                        "name": tc.function.name or "" if tc.function else "",
-                                        "arguments": "",
-                                    }
-                                if tc.function and tc.function.arguments:
-                                    tool_calls_accumulator[idx]["arguments"] += tc.function.arguments
+                # stream_async is a coroutine that returns an AsyncGenerator —
+                # await it to get the generator, then iterate directly.
+                stream = await client.chat.stream_async(**kwargs)
+                async for chunk in stream:
+                    delta = chunk.data.choices[0].delta if chunk.data.choices else None
+                    if delta is None:
+                        continue
+
+                    content = delta.content
+                    if content and isinstance(content, str):
+                        full_text += content
+                        yield TokenEvent(text=content)
+
+                    tc_list = delta.tool_calls
+                    if tc_list is None or type(tc_list).__name__ == _UNSET_TYPE_NAME:
+                        continue
+                    if not isinstance(tc_list, list):
+                        continue
+
+                    for tc in tc_list:
+                        idx = getattr(tc, "index", 0)
+                        if idx not in tool_calls_accumulator:
+                            fn = getattr(tc, "function", None)
+                            tool_calls_accumulator[idx] = {
+                                "id": getattr(tc, "id", "") or "",
+                                "name": (fn.name or "") if fn else "",
+                                "arguments": "",
+                            }
+                        fn = getattr(tc, "function", None)
+                        if fn and fn.arguments:
+                            tool_calls_accumulator[idx]["arguments"] += fn.arguments
 
                 for tc in tool_calls_accumulator.values():
                     yield ToolCallEvent(
