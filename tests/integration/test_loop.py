@@ -111,6 +111,48 @@ async def test_tool_call_executes_and_loops():
     assert "sunny" in done.text.lower()
 
 
+async def test_tool_calls_stored_on_assistant_message():
+    """loop must attach tool_calls to the assistant Message so adapters can
+    reconstruct multi-turn history without a side-channel cache."""
+    call_count = 0
+
+    class ToolCallAdapter:
+        async def complete(self, messages, tools, config):
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                async def _first():
+                    yield ToolCallEvent(id="tc1", name="get_weather", input={"city": "Paris"})
+                    yield DoneEvent(text="")
+                return _first()
+            else:
+                async def _second():
+                    yield TokenEvent(text="Sunny in Paris.")
+                    yield DoneEvent(text="Sunny in Paris.")
+                return _second()
+
+    session = Session(session_id="tc-store")
+    adapter = ToolCallAdapter()
+    config = AgentConfig(model="mock", adapter=adapter)
+
+    async for _ in run_agent_loop(
+        user_message="Weather in Paris?",
+        session=session,
+        instructions="",
+        tools=_make_tools(),
+        adapter=adapter,
+        config=config,
+    ):
+        pass
+
+    assistant_msg = next(m for m in session.history if m.role == "assistant")
+    assert assistant_msg.tool_calls is not None
+    assert len(assistant_msg.tool_calls) == 1
+    assert assistant_msg.tool_calls[0]["id"] == "tc1"
+    assert assistant_msg.tool_calls[0]["name"] == "get_weather"
+    assert assistant_msg.tool_calls[0]["arguments"] == '{"city": "Paris"}'
+
+
 async def test_unknown_tool_yields_error():
     class BadToolAdapter:
         async def complete(self, messages, tools, config):

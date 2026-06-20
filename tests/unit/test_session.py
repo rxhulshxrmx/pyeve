@@ -49,6 +49,22 @@ async def test_save_with_tool_messages(tmp_path):
     assert loaded.history[0].tool_name == "get_weather"
 
 
+async def test_save_and_load_tool_calls_roundtrip(tmp_path):
+    store = DiskSessionStore(base_dir=tmp_path)
+    session = Session(session_id="tc-roundtrip")
+    session.history.append(Message(
+        role="assistant",
+        content="",
+        tool_calls=[{"id": "tc1", "name": "search", "arguments": '{"query": "Paris"}'}],
+    ))
+    await store.save(session)
+    loaded = await store.load("tc-roundtrip")
+
+    assert loaded.history[0].tool_calls is not None
+    assert loaded.history[0].tool_calls[0]["id"] == "tc1"
+    assert loaded.history[0].tool_calls[0]["name"] == "search"
+
+
 async def test_overwrite_existing_session(tmp_path):
     store = DiskSessionStore(base_dir=tmp_path)
     session = Session(session_id="overwrite")

@@ -10,21 +10,23 @@
 
 ## The filesystem is the authoring interface
 
-A typical pyeve agent has this structure:
+A pyeve agent is just three things:
 
 ```text
 my-agent/
 └── agent/
-    ├── agent.py            # model and runtime config
+    ├── agent.py            # model and adapter config
     ├── instructions.md     # always-on system prompt
     └── tools/              # functions the model can call
-        └── get_weather.py
+        └── search.py
 ```
+
+No decorators. No schema classes. No custom adapters. pyeve wires it all together automatically.
 
 ## Quick start
 
 ```bash
-pip install "pyeve[anthropic]"   # or [openai], [mistral], [sap]
+pip install "pyeve[mistral]"
 pyeve init my-agent
 cd my-agent
 pyeve dev
@@ -34,13 +36,13 @@ Your agent is running at `http://localhost:8000`.
 
 ## A minimal example
 
-Replace `agent/instructions.md` with:
+`agent/instructions.md`:
 
 ```md
 You are a concise weather assistant. Tell users that the weather data is mocked.
 ```
 
-Add a tool at `agent/tools/get_weather.py`:
+`agent/tools/get_weather.py`:
 
 ```python
 async def execute(city: str) -> dict:
@@ -48,16 +50,23 @@ async def execute(city: str) -> dict:
     return {"city": city, "condition": "Sunny", "temp_f": 72}
 ```
 
-Configure the model in `agent/agent.py`:
+`agent/agent.py`:
 
 ```python
 from pyeve import define_agent
-from pyeve.adapters.anthropic import AnthropicAdapter
+from pyeve.adapters.mistral import MistralAdapter
 
 agent = define_agent(
-    model="claude-sonnet-4-6",
-    adapter=AnthropicAdapter(),
+    model="mistral-large-latest",
+    adapter=MistralAdapter(),
 )
+```
+
+Set your API key and start the server:
+
+```bash
+export MISTRAL_API_KEY=...
+pyeve dev
 ```
 
 Send a message:
@@ -72,13 +81,40 @@ Response streams as [Server-Sent Events](https://developer.mozilla.org/en-US/doc
 
 ## Tools are plain async functions
 
-No decorators, no schema classes. pyeve reads the docstring as the description and infers the JSON schema from type hints.
+pyeve reads the docstring as the tool description and infers the JSON schema from type hints. No registration needed — any `.py` file in `tools/` is auto-discovered.
 
 ```python
 # agent/tools/search.py
 async def execute(query: str, limit: int = 5) -> list[dict]:
     """Search the knowledge base and return matching documents."""
     ...
+```
+
+## SSE event stream
+
+Each `POST /chat` response streams newline-delimited SSE events:
+
+| Event type | Payload |
+|---|---|
+| `token` | `{"type": "token", "text": "..."}` |
+| `tool_call` | `{"type": "tool_call", "id": "...", "name": "...", "input": {...}}` |
+| `tool_result` | `{"type": "tool_result", "id": "...", "result": {...}}` |
+| `done` | `{"type": "done", "text": "<full response>"}` |
+| `error` | `{"type": "error", "message": "..."}` |
+
+## Durable sessions
+
+Sessions are persisted to disk automatically. Resume a conversation by passing `session_id`:
+
+```bash
+curl -X POST http://localhost:8000/chat \
+  -d '{"message": "Follow up question", "session_id": "user-123"}'
+```
+
+Retrieve history:
+
+```bash
+curl http://localhost:8000/sessions/user-123
 ```
 
 ## Works with any Python framework
@@ -106,25 +142,8 @@ uvicorn.run(agent("./agent"), port=8000)
 
 | Provider | Install | Adapter |
 |---|---|---|
-| Anthropic | `pip install "pyeve[anthropic]"` | `AnthropicAdapter()` |
-| OpenAI | `pip install "pyeve[openai]"` | `OpenAIAdapter()` |
 | Mistral | `pip install "pyeve[mistral]"` | `MistralAdapter()` |
 | SAP AI Core | `pip install "pyeve[sap]"` | `SAPAICoreAdapter()` |
-
-## Durable sessions
-
-Sessions are persisted to disk automatically. Pick up a conversation by passing `session_id`:
-
-```bash
-curl -X POST http://localhost:8000/chat \
-  -d '{"message": "Follow up question", "session_id": "user-123"}'
-```
-
-Retrieve history:
-
-```bash
-curl http://localhost:8000/sessions/user-123
-```
 
 ## Testing
 
